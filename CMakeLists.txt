@@ -3,6 +3,7 @@ project(lazperf-c)
 
 set(CMAKE_CXX_STANDARD 11)
 
+include_directories(laz-perf)
 include_directories(.)
 add_library(lazperf-c lazperf_c.cpp lazperf_c.h)
 

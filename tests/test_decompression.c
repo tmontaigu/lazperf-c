@@ -14,7 +14,8 @@
 #define SIZEOF_CHUNK_TABLE_OFFSET 8
 #define POINT_COUNT 1065
 
-int main(int argc, char *argv[]) {
+
+int test_successful_decompression() {
 	FILE *laz_file = fopen("./tests/data/simple.laz", "rb");
 	if (laz_file == NULL) {
 		perror("fopen() of \"simple.laz\" failed");
@@ -69,4 +70,29 @@ int main(int argc, char *argv[]) {
 	free(laszip_vlr_data);
 
 	return EXIT_SUCCESS;
+}
+
+
+int test_record_schema() {
+	RecordSchemaPtr record_schema = new_record_schema();
+	assert(record_schema_size_in_bytes(record_schema) == 0);
+
+	record_schema_push_point(record_schema);
+	assert(record_schema_size_in_bytes(record_schema) == 20);
+
+	record_schema_push_gpstime(record_schema);
+	assert(record_schema_size_in_bytes(record_schema) == 28);
+
+	record_schema_push_rgb(record_schema);
+	assert(record_schema_size_in_bytes(record_schema) == 34);
+
+	record_schema_push_extrabytes(record_schema, 6);
+	assert(record_schema_size_in_bytes(record_schema) == 40);
+	delete_record_schema(record_schema);
+}
+
+int main(int argc, char *argv[]) {
+	int err = test_successful_decompression();
+	test_record_schema();
+	return err;
 }

@@ -34,6 +34,18 @@ struct LazPerfResult lazperf_decompress_points(
 		size_t num_points,
 		size_t point_size
 );
+
+
+typedef void* RecordSchemaPtr;
+RecordSchemaPtr new_record_schema(void);
+void delete_record_schema(RecordSchemaPtr);
+void record_schema_push_point(RecordSchemaPtr schema);
+void record_schema_push_gpstime(RecordSchemaPtr schema);
+void record_schema_push_rgb(RecordSchemaPtr schema);
+void record_schema_push_extrabytes(RecordSchemaPtr schema, size_t count);
+int record_schema_size_in_bytes(RecordSchemaPtr);
+
+
 #ifdef __cplusplus
 };
 #endif

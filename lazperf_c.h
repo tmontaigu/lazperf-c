@@ -8,9 +8,26 @@
 extern "C" {
 #endif
 
-void hello();
+struct RawPointsBuffer {
+	char *points;
+	size_t buffer_size;
+};
 
-char *lazperf_decompress_points(
+struct LazPerfError {
+	const char *error_msg;
+};
+
+
+struct LazPerfResult {
+	int is_error;
+	union {
+		struct RawPointsBuffer points_buffer;
+		struct LazPerfError error;
+	};
+};
+
+
+struct LazPerfResult lazperf_decompress_points(
 		const uint8_t *compressed_points_buffer,
 		size_t buffer_size,
 		const char *lazsip_vlr_data,

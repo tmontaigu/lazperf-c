@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <lazperf_c.h>
 
 
 #define LAS_HEADER_SIZE 227
@@ -14,8 +15,6 @@
 #define POINT_COUNT 1065
 
 int main(int argc, char *argv[]) {
-	hello();
-
 	FILE *laz_file = fopen("./tests/data/simple.laz", "rb");
 	if (laz_file == NULL) {
 		perror("fopen() of \"simple.laz\" failed");
@@ -43,8 +42,11 @@ int main(int argc, char *argv[]) {
 	r = fread(compressed_points, sizeof(char), point_data_size, laz_file);
 	assert(ftell(laz_file) == 18217);
 
-	char* decompressed_points = lazperf_decompress_points((uint8_t *)compressed_points, point_data_size, laszip_vlr_data, POINT_COUNT, 34);
-	hello();
+	struct LazPerfResult result = lazperf_decompress_points((uint8_t *)compressed_points, point_data_size, laszip_vlr_data, POINT_COUNT, 34);
+	if (result.is_error) {
+		printf("Failed to decompress: %s\n", result.error.error_msg);
+		return EXIT_FAILURE;
+	}
 
 	FILE *decompresed_points_file = fopen("./tests/data/simple_points_uncompressed.bin", "rb");
 	if (decompresed_points_file == NULL) {
@@ -54,6 +56,7 @@ int main(int argc, char *argv[]) {
 	char *expected_points = malloc(POINT_COUNT * 34 * sizeof(char));
 	fread(expected_points, sizeof(char), POINT_COUNT * 34, decompresed_points_file);
 
+	char *decompressed_points = result.points_buffer.points;
 	for (size_t i = 0; i < POINT_COUNT * 34; ++i) {
 		assert(expected_points[i] == decompressed_points[i]);
 	}

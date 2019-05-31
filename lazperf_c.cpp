@@ -2,12 +2,6 @@
 
 #include <iostream>
 
-void hello()
-{
-	std::cout << "Hello, World!" << std::endl;
-}
-
-
 #include <iostream>
 #include <istream>
 
@@ -107,7 +101,7 @@ private:
 
 
 
-static char* _lazperf_decompress_points(const uint8_t *compressed_points_buffer,
+static RawPointsBuffer _lazperf_decompress_points(const uint8_t *compressed_points_buffer,
 										size_t buffer_size,
 										const char *lazsip_vlr_data,
 										size_t num_points,
@@ -123,29 +117,30 @@ static char* _lazperf_decompress_points(const uint8_t *compressed_points_buffer,
 	{
 		decompressor.decompress(current_point);
 	}
-	return decompressed_points.release();
+	RawPointsBuffer buffer {decompressed_points.release(), point_size * num_points};
+	return buffer;
 }
 
-char *lazperf_decompress_points(
+LazPerfResult lazperf_decompress_points(
 		const uint8_t *compressed_points_buffer,
 		size_t buffer_size,
 		const char *lazsip_vlr_data,
 		size_t num_points,
 		size_t point_size)
 {
+	LazPerfResult result{};
 	try
 	{
-		return _lazperf_decompress_points(compressed_points_buffer, buffer_size, lazsip_vlr_data, num_points, point_size);
-	} catch (std::bad_alloc &e)
-	{
-		std::cout << e.what() << '\n';
-		return NULL;
+		RawPointsBuffer points = _lazperf_decompress_points(compressed_points_buffer, buffer_size, lazsip_vlr_data, num_points, point_size);
+		result.is_error = 0;
+		result.points_buffer = points;
 	} catch (std::exception &e) {
-		std::cout << e.what() << '\n';
-		return NULL;
+		result.is_error = 1;
+		result.error.error_msg = e.what();
 	}
 	catch (...) {
-		std::cout << "unknown error\n" << '\n';
-		return NULL;
+		result.is_error = 1;
+		result.error.error_msg = "unknown error";
 	}
+	return result;
 }

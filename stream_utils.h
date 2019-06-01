@@ -2,6 +2,7 @@
 #define LAZPERF_C_STREAM_UTILS_H
 
 #include <vector>
+#include <iostream>
 
 template<typename CTYPE = unsigned char>
 class TypedLazPerfBuf

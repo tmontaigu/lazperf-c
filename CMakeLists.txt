@@ -3,6 +3,7 @@ project(lazperf-c)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_C_STANDARD  11)
+add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 
 include_directories(laz-perf)
 include_directories(.)

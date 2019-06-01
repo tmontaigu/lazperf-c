@@ -43,7 +43,7 @@ int test_successful_decompression() {
 	r = fread(compressed_points, sizeof(char), point_data_size, laz_file);
 	assert(ftell(laz_file) == 18217);
 
-	struct LazPerfResult result = lazperf_decompress_points((uint8_t *)compressed_points, point_data_size, laszip_vlr_data, POINT_COUNT, 34);
+	struct LazPerf_Result result = lazperf_decompress_points((uint8_t *)compressed_points, point_data_size, laszip_vlr_data, POINT_COUNT, 34);
 	if (result.is_error) {
 		printf("Failed to decompress: %s\n", result.error.error_msg);
 		return EXIT_FAILURE;
@@ -57,7 +57,7 @@ int test_successful_decompression() {
 	char *expected_points = malloc(POINT_COUNT * 34 * sizeof(char));
 	fread(expected_points, sizeof(char), POINT_COUNT * 34, decompresed_points_file);
 
-	char *decompressed_points = result.points_buffer.points;
+	char *decompressed_points = result.points_buffer.data;
 	for (size_t i = 0; i < POINT_COUNT * 34; ++i) {
 		assert(expected_points[i] == decompressed_points[i]);
 	}
@@ -74,25 +74,100 @@ int test_successful_decompression() {
 
 
 int test_record_schema() {
-	RecordSchemaPtr record_schema = new_record_schema();
-	assert(record_schema_size_in_bytes(record_schema) == 0);
+	LazPerf_RecordSchemaPtr record_schema = lazperf_new_record_schema();
+	assert(lazperf_record_schema_size_in_bytes(record_schema) == 0);
 
-	record_schema_push_point(record_schema);
-	assert(record_schema_size_in_bytes(record_schema) == 20);
+	lazperf_record_schema_push_point(record_schema);
+	assert(lazperf_record_schema_size_in_bytes(record_schema) == 20);
 
-	record_schema_push_gpstime(record_schema);
-	assert(record_schema_size_in_bytes(record_schema) == 28);
+	lazperf_record_schema_push_gpstime(record_schema);
+	assert(lazperf_record_schema_size_in_bytes(record_schema) == 28);
 
-	record_schema_push_rgb(record_schema);
-	assert(record_schema_size_in_bytes(record_schema) == 34);
+	lazperf_record_schema_push_rgb(record_schema);
+	assert(lazperf_record_schema_size_in_bytes(record_schema) == 34);
 
-	record_schema_push_extrabytes(record_schema, 6);
-	assert(record_schema_size_in_bytes(record_schema) == 40);
-	delete_record_schema(record_schema);
+	lazperf_record_schema_push_extrabytes(record_schema, 6);
+	assert(lazperf_record_schema_size_in_bytes(record_schema) == 40);
+	lazperf_delete_record_schema(record_schema);
+
+	return EXIT_SUCCESS;
+}
+
+int test_compression() {
+	FILE *uncompressed_points_file = fopen("./tests/data/simple_points_uncompressed.bin", "rb");
+	if (uncompressed_points_file == NULL) {
+		perror("fopen() of uncompressed points failed");
+		return EXIT_FAILURE;
+	}
+
+	char *uncompressed_points = malloc(36210 * sizeof(char));
+	fread(uncompressed_points, sizeof(char), 36210, uncompressed_points_file);
+
+	LazPerf_RecordSchemaPtr record_schema = lazperf_new_record_schema();
+	lazperf_record_schema_push_point(record_schema);
+	lazperf_record_schema_push_gpstime(record_schema);
+	lazperf_record_schema_push_rgb(record_schema);
+
+	struct LazPerf_Result result = lazperf_compress_points(record_schema,
+														  OFFSET_TO_POINT_DATA + SIZEOF_CHUNK_TABLE_OFFSET,
+														  uncompressed_points,
+														  POINT_COUNT);
+
+	if (result.is_error) {
+		printf("Error when compressing: %s\n", result.error.error_msg);
+	}
+	else {
+	}
+
+	free(uncompressed_points);
+	fclose(uncompressed_points_file);
+	return 0;
+}
+
+int test_streaming_compression() {
+	FILE *uncompressed_points_file = fopen("./tests/data/simple_points_uncompressed.bin", "rb");
+	if (uncompressed_points_file == NULL) {
+		perror("fopen() of uncompressed points failed");
+		return EXIT_FAILURE;
+	}
+	const size_t uncompressed_file_size = 36210;
+	uint8_t *uncompressed_points = malloc(uncompressed_file_size * sizeof(uint8_t));
+	fread(uncompressed_points, sizeof(uint8_t), uncompressed_file_size, uncompressed_points_file);
+
+	LazPerf_RecordSchemaPtr record_schema = lazperf_new_record_schema();
+	lazperf_record_schema_push_point(record_schema);
+	lazperf_record_schema_push_gpstime(record_schema);
+	lazperf_record_schema_push_rgb(record_schema);
+	size_t point_size = lazperf_record_schema_size_in_bytes(record_schema);
+
+	assert(uncompressed_file_size == point_size * POINT_COUNT);
+
+	LazPerf_VlrCompressorPtr compressor = lazperf_new_vlr_compressor(record_schema, 0);
+
+	uint8_t *compressed_output = malloc(sizeof(uint8_t) * uncompressed_file_size);
+	size_t bsize = 0;
+	for (uint8_t *current = uncompressed_points; current < uncompressed_points + uncompressed_file_size; current += point_size)
+	{
+		size_t compressed_size = lazperf_vlr_compressor_compress(compressor, (const char *) current);
+		if (compressed_size != 0) {
+			lazperf_vlr_compressor_copy_data_to(compressor, (uint8_t *) &compressed_output[bsize]);
+			bsize += compressed_size;
+			lazperf_vlr_compressor_reset_size(compressor);
+		}
+	}
+	lazperf_vlr_compressor_done(compressor);
+	lazperf_vlr_compressor_copy_data_to(compressor, (uint8_t *) &compressed_output[bsize]);
+	lazperf_delete_vlr_compressor(compressor);
+
+	free(compressed_output);
+	free(uncompressed_points);
+	return EXIT_SUCCESS;
 }
 
 int main(int argc, char *argv[]) {
 	int err = test_successful_decompression();
 	test_record_schema();
+	err = test_streaming_compression();
+	test_compression();
 	return err;
 }

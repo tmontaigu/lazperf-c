@@ -116,9 +116,7 @@ size_t VlrCompressor::compress(const char *inbuf)
 		resetCompressor();
 		newChunk();
 	}
-	auto bfr = m_data_vec.size();
 	m_compressor->compress(inbuf);
-	//std::cout << "bfr: " << bfr << " aftr: " << m_data_vec.size() << " diff: " << m_data_vec.size() - bfr << '\n';
 	m_chunkPointsWritten++;
 	return m_data_vec.size();
 }
@@ -253,10 +251,9 @@ private:
  * Purely C API
  **********************************************************************************************************************/
 
-void lazperf_delete_sized_buffer(struct LazPerf_SizedBuffer *buffer)
+void lazperf_delete_sized_buffer(struct LazPerf_SizedBuffer buffer)
 {
-	delete buffer->data;
-	buffer->data = nullptr;
+	delete buffer.data;
 }
 
 
@@ -269,37 +266,26 @@ static LazPerf_SizedBuffer _lazperf_decompress_points(const uint8_t *compressed_
 	VlrDecompressor decompressor(compressed_points_buffer, buffer_size, point_size, lazsip_vlr_data);
 	std::unique_ptr<char[]> decompressed_points(new char[point_size * num_points]);
 	LazPerf_SizedBuffer buffer{};
-	try
+
+	char *current_point = decompressed_points.get();
+	for (size_t i = 0; i < num_points; ++i)
 	{
-		char *current_point = decompressed_points.get();
-		for (size_t i = 0; i < num_points; ++i)
-		{
-			decompressor.decompress(current_point);
-			current_point += point_size;
-		}
-		buffer.data = decompressed_points.release();
-		buffer.size = point_size * num_points;
-		return buffer;
-	} catch (const std::exception &e)
-	{
-		std::cout << e.what() << '\n';
-		return buffer;
+		decompressor.decompress(current_point);
+		current_point += point_size;
 	}
-	catch (...)
-	{
-		std::cout << "Unknown Error\n";
-		return buffer;
-	}
+	buffer.data = decompressed_points.release();
+	buffer.size = point_size * num_points;
+	return buffer;
 }
 
-LazPerf_Result lazperf_decompress_points(
+LazPerf_BufferResult lazperf_decompress_points(
 		const uint8_t *compressed_points_buffer,
 		size_t buffer_size,
 		const char *lazsip_vlr_data,
 		size_t num_points,
 		size_t point_size)
 {
-	LazPerf_Result result{};
+	LazPerf_BufferResult result{};
 	try
 	{
 		LazPerf_SizedBuffer points = _lazperf_decompress_points(
@@ -319,6 +305,7 @@ LazPerf_Result lazperf_decompress_points(
 	return result;
 }
 
+//TODO Error VoidResult
 void lazperf_decompress_points_into(
 		const uint8_t *compressed_points_buffer,
 		size_t buffer_size,
@@ -439,10 +426,12 @@ LazPerf_SizedBuffer lazperf_laz_vlr_raw_data(LazPerf_LazVlrPtr laz_vle)
 	return raw_vlr_data;
 }
 
-LazPerf_Result lazperf_compress_points(LazPerf_RecordSchemaPtr schema, size_t offset_to_point_data, const char *points,
+/* Compression */
+
+LazPerf_BufferResult lazperf_compress_points(LazPerf_RecordSchemaPtr schema, size_t offset_to_point_data, const char *points,
 									   size_t num_points)
 {
-	LazPerf_Result result{};
+	LazPerf_BufferResult result{};
 	auto record_schema = reinterpret_cast<laszip::factory::record_schema *>(schema);
 	size_t point_size = record_schema->size_in_bytes();
 	try
@@ -562,7 +551,7 @@ uint64_t lazperf_vlr_compressor_write_chunk_table(LazPerf_VlrCompressorPtr compr
 	return vlr_compressor->writeChunkTable();
 }
 
-void lazperf_delete_result(struct LazPerf_Result *result)
+void lazperf_delete_result(struct LazPerf_BufferResult *result)
 {
 	if (result->is_error)
 	{

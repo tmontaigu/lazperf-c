@@ -50,7 +50,7 @@ int test_successful_decompression()
 	r = fread(compressed_points, sizeof(char), point_data_size, laz_file);
 	assert(ftell(laz_file) == 18217);
 
-	struct LazPerf_Result result = lazperf_decompress_points((uint8_t *) compressed_points, point_data_size,
+	struct LazPerf_BufferResult result = lazperf_decompress_points((uint8_t *) compressed_points, point_data_size,
 															 laszip_vlr_data, POINT_COUNT, 34);
 	if (result.is_error)
 	{
@@ -186,7 +186,7 @@ int test_compression()
 	lazperf_record_schema_push_gpstime(record_schema);
 	lazperf_record_schema_push_rgb(record_schema);
 
-	struct LazPerf_Result result = lazperf_compress_points(record_schema,
+	struct LazPerf_BufferResult result = lazperf_compress_points(record_schema,
 														   OFFSET_TO_POINT_DATA,
 														   uncompressed_points,
 														   POINT_COUNT);
@@ -201,7 +201,7 @@ int test_compression()
 	LazPerf_LazVlrPtr laz_vlr = lazperf_laz_vlr_from_schema(record_schema);
 	struct LazPerf_SizedBuffer laz_vlr_data = lazperf_laz_vlr_raw_data(laz_vlr);
 
-	struct LazPerf_Result decomp_result = lazperf_decompress_points(
+	struct LazPerf_BufferResult decomp_result = lazperf_decompress_points(
 			(uint8_t *) result.points_buffer.data + sizeof(uint64_t),
 			result.points_buffer.size - sizeof(uint64_t),
 			laz_vlr_data.data,
@@ -276,7 +276,7 @@ int test_streaming_compression()
 	bsize += lazperf_vlr_compressor_extract_data_to(compressor, next_compressed);
 
 
-	struct LazPerf_Result compression_result = lazperf_compress_points(
+	struct LazPerf_BufferResult compression_result = lazperf_compress_points(
 			record_schema,
 			LAS_HEADER_SIZE + VLR_HEADER_SIZE + vlr_data.size,
 			(char *) uncompressed_points,
@@ -299,7 +299,7 @@ int test_streaming_compression()
 		}
 	}
 
-	struct LazPerf_Result result = lazperf_decompress_points(
+	struct LazPerf_BufferResult result = lazperf_decompress_points(
 			(uint8_t *) compressed_output + sizeof(uint64_t),
 			bsize - sizeof(uint64_t),
 			vlr_data.data,

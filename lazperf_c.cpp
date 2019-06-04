@@ -125,12 +125,14 @@ size_t VlrCompressor::compress(const char *inbuf)
 uint64_t VlrCompressor::done()
 {
 	// Close and clear the point encoder.
-	m_encoder->done();
-	m_encoder.reset();
+	if (m_encoder)
+	{
+		m_encoder->done();
+		m_encoder.reset();
+	}
 
 	newChunk();
 	return m_stream.m_buf.size();
-
 }
 
 void VlrCompressor::resetCompressor()

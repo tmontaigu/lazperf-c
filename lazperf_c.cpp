@@ -224,7 +224,6 @@ public:
 	}
 
 
-
 private:
 	void resetDecompressor()
 	{
@@ -246,7 +245,6 @@ private:
 	uint32_t m_chunksize;
 	uint32_t m_chunkPointsRead;
 };
-
 
 
 /***********************************************************************************************************************
@@ -400,38 +398,52 @@ void lazperf_delete_record_schema(LazPerf_RecordSchemaPtr schema)
 	delete record_schema;
 }
 
-LazPerf_LazVlrPtr lazperf_laz_vlr_from_schema(LazPerf_RecordSchemaPtr schema)
+struct LazPerf_SizedBuffer lazperf_record_schema_laz_vlr_data(LazPerf_RecordSchemaPtr schema)
+{
+	auto record_schema = reinterpret_cast<laszip::factory::record_schema *>(schema);
+	auto vlr = laszip::io::laz_vlr::from_schema(*record_schema);
+
+	LazPerf_SizedBuffer raw_vlr_data{};
+	char *data = new char[vlr.size()];
+	vlr.extract(data);
+	raw_vlr_data.size = vlr.size();
+	raw_vlr_data.data = data;
+	return raw_vlr_data;
+}
+
+LazPerf_LazVlrPtr lazperf_new_laz_vlr_from_schema(LazPerf_RecordSchemaPtr schema)
 {
 	auto record_schema = reinterpret_cast<laszip::factory::record_schema *>(schema);
 	auto vlr = laszip::io::laz_vlr::from_schema(*record_schema);
 	auto *vlr_on_heap = new laszip::io::laz_vlr;
 	*vlr_on_heap = vlr;
+
 	return reinterpret_cast<void *>(vlr_on_heap);
 }
 
-
-size_t las_vlr_size(LazPerf_LazVlrPtr laz_vlr)
+void lazperf_delete_laz_vlr(LazPerf_LazVlrPtr vlr)
 {
-	auto vlr = reinterpret_cast<laszip::io::laz_vlr *>(laz_vlr);
-	return vlr->size();
+	auto vlr_ = reinterpret_cast<laszip::io::laz_vlr *>(vlr);
+	delete vlr_;
 }
 
-
-LazPerf_SizedBuffer lazperf_laz_vlr_raw_data(LazPerf_LazVlrPtr laz_vle)
+size_t lazperf_laz_vlr_record_data_size(LazPerf_RecordSchemaPtr vlr)
 {
-	LazPerf_SizedBuffer raw_vlr_data{};
-	auto vlr = reinterpret_cast<laszip::io::laz_vlr *>(laz_vle);
-	char *data = new char[vlr->size()];
-	vlr->extract(data);
-	raw_vlr_data.size = vlr->size();
-	raw_vlr_data.data = data;
-	return raw_vlr_data;
+	auto vlr_ = reinterpret_cast<laszip::io::laz_vlr *>(vlr);
+	return vlr_->size();
+}
+
+void lazperf_laz_vlr_copy_record_data(LazPerf_LazVlrPtr vlr, char *out)
+{
+	auto vlr_ = reinterpret_cast<laszip::io::laz_vlr *>(vlr);
+	vlr_->extract(out);
 }
 
 /* Compression */
 
-LazPerf_BufferResult lazperf_compress_points(LazPerf_RecordSchemaPtr schema, size_t offset_to_point_data, const char *points,
-									   size_t num_points)
+LazPerf_BufferResult
+lazperf_compress_points(LazPerf_RecordSchemaPtr schema, size_t offset_to_point_data, const char *points,
+						size_t num_points)
 {
 	LazPerf_BufferResult result{};
 	auto record_schema = reinterpret_cast<laszip::factory::record_schema *>(schema);

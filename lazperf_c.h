@@ -38,8 +38,6 @@ struct LazPerf_BufferResult
 };
 
 
-
-
 /*
  * Frees the memory owned by either variant of the result union
  */
@@ -98,15 +96,52 @@ void lazperf_record_schema_push_extrabytes(LazPerf_RecordSchemaPtr schema, size_
  */
 int lazperf_record_schema_size_in_bytes(LazPerf_RecordSchemaPtr schema);
 
-/* Laszip VLR */
+/**
+ * Returns a copy of the LazVlr record data corresponding to the record schema
+ * @param schema
+ * @return
+ */
+struct LazPerf_SizedBuffer lazperf_record_schema_laz_vlr_data(LazPerf_RecordSchemaPtr schema);
 
+
+/* laszip VLR */
+
+/**
+ *  LazVlr, only useful to get the record data of the vlr
+ */
 typedef void *LazPerf_LazVlrPtr;
 
-LazPerf_LazVlrPtr lazperf_laz_vlr_from_schema(LazPerf_RecordSchemaPtr schema);
+/**
+ * Creates a new LazVlr
+ *
+ * @param schema
+ * @return the new instance
+ */
+LazPerf_LazVlrPtr lazperf_new_laz_vlr_from_schema(LazPerf_RecordSchemaPtr schema);
 
-size_t lazperf_laz_vlr_size(LazPerf_LazVlrPtr laz_vlr);
+/**
+ * Deletes the laz vlr instance
+ *
+ * @param vlr
+ */
+void lazperf_delete_laz_vlr(LazPerf_LazVlrPtr vlr);
 
-struct LazPerf_SizedBuffer lazperf_laz_vlr_raw_data(LazPerf_LazVlrPtr laz_vle);
+/**
+ * Returns the size of the LazVlr's record_data
+ *
+ * @param vlr
+ * @return the size in bytes
+ */
+size_t lazperf_laz_vlr_record_data_size(LazPerf_LazVlrPtr vlr);
+
+/**
+ * copty the vlr's data to the buffer
+ * @param vlr
+ * @param out buffer where the data will be written, MUST be preallocated with the same size as the
+ * laz_vlr_size
+ */
+void lazperf_laz_vlr_copy_record_data(LazPerf_LazVlrPtr vlr, char *out);
+
 
 
 /* Decompression API */

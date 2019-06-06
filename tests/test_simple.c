@@ -51,7 +51,7 @@ int test_successful_decompression()
 	assert(ftell(laz_file) == 18217);
 
 	struct LazPerf_BufferResult result = lazperf_decompress_points((uint8_t *) compressed_points, point_data_size,
-															 laszip_vlr_data, POINT_COUNT, 34);
+																   laszip_vlr_data, POINT_COUNT, 34);
 	if (result.is_error)
 	{
 		printf("Failed to decompress: %s\n", result.error.error_msg);
@@ -187,9 +187,9 @@ int test_compression()
 	lazperf_record_schema_push_rgb(record_schema);
 
 	struct LazPerf_BufferResult result = lazperf_compress_points(record_schema,
-														   OFFSET_TO_POINT_DATA,
-														   uncompressed_points,
-														   POINT_COUNT);
+																 OFFSET_TO_POINT_DATA,
+																 uncompressed_points,
+																 POINT_COUNT);
 
 	if (result.is_error)
 	{
@@ -198,8 +198,7 @@ int test_compression()
 		return EXIT_FAILURE;
 	}
 
-	LazPerf_LazVlrPtr laz_vlr = lazperf_laz_vlr_from_schema(record_schema);
-	struct LazPerf_SizedBuffer laz_vlr_data = lazperf_laz_vlr_raw_data(laz_vlr);
+	struct LazPerf_SizedBuffer laz_vlr_data = lazperf_record_schema_laz_vlr_data(record_schema);
 
 	struct LazPerf_BufferResult decomp_result = lazperf_decompress_points(
 			(uint8_t *) result.points_buffer.data + sizeof(uint64_t),
@@ -221,6 +220,7 @@ int test_compression()
 		assert(uncompressed_points[i] == decompressed_points[i]);
 	}
 
+	lazperf_delete_sized_buffer(laz_vlr_data);
 	free(uncompressed_points);
 	fclose(uncompressed_points_file);
 	return 0;
@@ -328,6 +328,33 @@ int test_streaming_compression()
 	return EXIT_SUCCESS;
 }
 
+int test_laz_vlr()
+{
+	LazPerf_RecordSchemaPtr record_schema = lazperf_new_record_schema();
+	lazperf_record_schema_push_point(record_schema);
+	lazperf_record_schema_push_gpstime(record_schema);
+	lazperf_record_schema_push_rgb(record_schema);
+
+
+	struct LazPerf_SizedBuffer vlr_data_1 = lazperf_record_schema_laz_vlr_data(record_schema);
+	LazPerf_LazVlrPtr vlr = lazperf_new_laz_vlr_from_schema(record_schema);
+	size_t data_size = lazperf_laz_vlr_record_data_size(vlr);
+
+	assert(data_size == vlr_data_1.size);
+	char *out = malloc(sizeof(char) * data_size);
+	lazperf_laz_vlr_copy_record_data(vlr, out);
+
+	for (int i = 0; i < data_size; ++i)
+	{
+		assert(out[i] == vlr_data_1.data[i]);
+	}
+	free(out);
+	lazperf_delete_sized_buffer(vlr_data_1);
+	lazperf_delete_record_schema(record_schema);
+	lazperf_delete_laz_vlr(vlr);
+	return EXIT_SUCCESS;
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -336,6 +363,7 @@ int main(int argc, char *argv[])
 	test_streaming_decompression();
 	test_streaming_compression();
 	test_record_schema();
+	test_laz_vlr();
 	return EXIT_SUCCESS;
 }
 

@@ -4,6 +4,7 @@
 #include <iostream>
 #include <utility>
 #include <istream>
+#include <cstring>
 
 #include <laz-perf/common/common.hpp>
 #include <laz-perf/compressor.hpp>
@@ -168,8 +169,8 @@ uint64_t VlrCompressor::writeChunkTable()
 	uint32_t version = htole32(0);
 	uint32_t chunkTableSize = htole32((uint32_t) m_chunkTable.size());
 
-	memcpy(&m_stream.m_buf[chunkTablePos], &version, sizeof(uint32_t));
-	memcpy(&m_stream.m_buf[chunkTablePos + sizeof(uint32_t)], &chunkTableSize, sizeof(uint32_t));
+	std::memcpy(&m_stream.m_buf[chunkTablePos], &version, sizeof(uint32_t));
+	std::memcpy(&m_stream.m_buf[chunkTablePos + sizeof(uint32_t)], &chunkTableSize, sizeof(uint32_t));
 
 	// Encode and write the chunk table.
 	// OutputStream outputStream(m_stream);
@@ -464,7 +465,7 @@ lazperf_compress_points(LazPerf_RecordSchemaPtr schema, size_t offset_to_point_d
 		vlr_compressor.writeChunkTable();
 		char *compressed_points = new char[vlr_compressor.data()->size()];
 		vlr_compressor.copyDataTo(reinterpret_cast<uint8_t *>(compressed_points));
-		memcpy(compressed_points, &chunk_table_pos, sizeof(uint64_t));
+		std::memcpy(compressed_points, &chunk_table_pos, sizeof(uint64_t));
 		result.points_buffer.size = vlr_compressor.data()->size();
 		result.points_buffer.data = compressed_points;
 	}

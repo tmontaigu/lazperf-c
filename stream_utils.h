@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <iostream>
+#include <cstring>
 
 template<typename CTYPE = unsigned char>
 class TypedLazPerfBuf
@@ -62,7 +63,7 @@ public:
 		{
 			throw std::runtime_error("Tried to read past buffer bounds");
 		}
-		memcpy(b, (unsigned char *) &m_data[m_idx], len);
+		std::memcpy(b, (unsigned char *) &m_data[m_idx], len);
 		m_idx += len;
 	}
 };
